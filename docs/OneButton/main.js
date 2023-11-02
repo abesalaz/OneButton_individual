@@ -1,6 +1,7 @@
-title = "[OneButton]";
+title = "Time it!";
 
-description = `A one button game.
+description = `Avoid the \npurple walls
+
 `;
 
 characters = [
@@ -16,56 +17,73 @@ characters = [
 
 options = {
   viewSize: { x: 100, y: 100 },
+  theme: "shapeDark",
 };
 
-let circleX;
-let circleY;
-let lineAngle = 0;
-let lineLength = 50;
-let canvas;
 let ballX;
 let ballY;
 let ballVelX = 0;
 let ballVelY = 0;
 let gravity = 0;
-let enemyStoneAngle;
-let enemyStoneSpeed;
-let enemyStoneSpeedVel;
-let enemyStoneAngleVel;
-let stoneSpeed;
-let stoneAngle;
-let stoneCount;
+let barAngle;
+let barAngleVel;
+let BarSpeed;
 // Walls
 let Wall_left;
 let Wall_right;
 let Wall_top;
 let Wall_bottom;
-let colorTimer =0;
-const colorInterval = 10;
+//WallColors
+let wallColors;
+let colorLast = 5 * 60;
+let WallChoice;
+let colorChanged = false;
+let currentWall = 0;
+let colorChangeTimer = 3 * 60; // Start with 5 seconds (60 frames per second)
+let timeToChangeColor = colorChangeTimer; // Initialize the time
 
 const centerPos = vec(50, 50);
 
 function update() {
   if (!ticks) {
-    canvas = document.querySelector('canvas');
     ballX = 50;
     ballY = 50;
-    enemyStoneAngle = PI / 2;
-    enemyStoneSpeed = 1;
-    enemyStoneAngleVel = 1;
-    stoneSpeed = 1;
-    stoneAngle = PI / 2;
-    enemyStoneSpeedVel = 1;
+    barAngle = PI / 2;
+    BarSpeed = 10;
+    barAngleVel = 2;
+    wallColors = ["purple", "purple", "purple", "purple"];
+    
+  }
+  
+  timeToChangeColor--;
+  // Change wall color randomly after 5 seconds
+  if (timeToChangeColor === 0) {
+    // Reset the previous wall color
+    wallColors[currentWall] = "purple";
+  
+    // Select a random wall to change its color
+    currentWall = rndi(0, 4);
+    wallColors[currentWall] = "green";
+  
+    timeToChangeColor = colorChangeTimer; // Reset the timer
+    colorChanged = true;
+  }
+  // Reset wall color after 1 second
+  if (colorChanged && ticks % colorLast ==0) {
+    wallColors[currentWall] = "purple";
+    colorChanged = false;
   }
 
-  let lineX = circleX + Math.cos(lineAngle) * lineLength;
-  let lineY = circleY + Math.sin(lineAngle) * lineLength;
+  color(wallColors[0]);
+  Wall_left = rect(0, 0, 7, 150);
+  color(wallColors[1]);
+  Wall_top = rect(0, 0, 100, 7);
+  color(wallColors[2]);
+  Wall_right = rect(93, 0, 7, 150);
+  color(wallColors[3]);
+  Wall_bottom = rect(0, 93, 100, 7);
 
-  Wall_left = rect(0, 0, 5, 150);
-  Wall_right = rect(95, 0, 5, 150);
-  Wall_top = rect(0, 0, 95, 5);
-  Wall_bottom = rect(0, 95, 95, 5);
-  color("purple");
+  color("black");
   rect(10, 119, 80, 1);
 
   // Update the ball's position
@@ -75,46 +93,68 @@ function update() {
   // Apply gravity to the ball's velocity
   ballVelY += gravity;
 
-// Left wall collision
-if (ballX < 5) {
-  ballX = 50;
-  ballVelX = 0; // Stop the ball's horizontal velocity
-  ballY = 50;   // Reset the ball's position to the center vertically
-}
-
-// Right wall collision
-if (ballX > 95) {
-  ballX = 50;
-  ballVelX = 0; // Stop the ball's horizontal velocity
-  ballY = 50;   // Reset the ball's position to the center vertically
-}
-
-// Top wall collision
-if (ballY < 5) {
-  ballY = 50;
-  ballVelY = 0; // Stop the ball's vertical velocity
-  ballX = 50;   // Reset the ball's position to the center horizontally
-}
-
-// Bottom wall collision
-if (ballY > 95) {
-  ballY = 50;
-  ballVelY = 0; // Stop the ball's vertical velocity
-  ballX = 50;   // Reset the ball's position to the center horizontally
-}
-
-  if (input.isJustPressed) {
-    // Calculate the new velocity based on the bar's angle
-    const shootSpeed = 5; // Adjust the shooting speed
-    ballVelX = Math.cos(enemyStoneAngle) * shootSpeed;
-    ballVelY = Math.sin(enemyStoneAngle) * shootSpeed;
+  // Check for collisions with the red wall (currentWall)
+  if (currentWall === 0 && ballX < 7) {
+    increaseScore();
+  } else if (currentWall === 1 && ballY < 7) {
+    increaseScore();
+  } else if (currentWall === 2 && ballX > 93) {
+    increaseScore();
+  } else if (currentWall === 3 && ballY > 93) {
+    increaseScore();
+  }
+  if (currentWall !== 0 && ballX < 7) {
+    end();
+  } else if (currentWall !== 1 && ballY < 7) {
+    end();
+  } else if (currentWall !== 2 && ballX > 93) {
+    end();
+  } else if (currentWall !== 3 && ballY > 93) {
+    end();
   }
 
-  // Draw the ball at its updated position
-  box(ballX, ballY, 3 , 3);
+  // Left wall collision
+  if (ballX < 7) {
+    resetBallPosition();
+  }
 
-  enemyStoneAngle += enemyStoneAngleVel * 0.03 * 1;
+  // Right wall collision
+  if (ballX > 93) {
+    resetBallPosition();
+  }
 
-  bar(50, 50, enemyStoneSpeed * 7, 2, enemyStoneAngle, 0);
-  
+  // Top wall collision
+  if (ballY < 7) {
+    resetBallPosition();
+  }
+
+  // Bottom wall collision
+  if (ballY > 93) {
+    resetBallPosition();
+  }
+
+  if (input.isJustPressed) {
+    const shootSpeed = 2;
+    ballVelX = Math.cos(barAngle) * shootSpeed;
+    ballVelY = Math.sin(barAngle) * shootSpeed;
+  }
+
+  box(ballX, ballY, 5, 5);
+
+  barAngle += barAngleVel * 0.03 * 1;
+
+  bar(50, 50, BarSpeed * 20, 1, barAngle, 0);
+}
+
+function increaseScore() {
+  // Increase the score when the ball collides with the red wall
+  score++;
+}
+
+
+function resetBallPosition() {
+  ballX = 50;
+  ballVelX = 0;
+  ballY = 50;
+  ballVelY = 0;
 }
