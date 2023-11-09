@@ -147,7 +147,7 @@ function update() {
 }
 
 function increaseScore() {
-  // Increase the score when the ball collides with the red wall
+  // Increase the score when the ball collides with the red walls
   score++;
 }
 
